@@ -10,19 +10,32 @@ app.use(express.json());
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "my_verify_token";
 
 // =======================
-// IN-MEMORY CRM (DEMO)
+// REPLY ENGINE (ONE BRAIN)
 // =======================
-const leads = [];
+function generateReply(text = "") {
+  const msg = text.toLowerCase();
+
+  if (msg.includes("price") || msg.includes("pricing")) {
+    return "Our plans start from $49/month. Want a demo or full details?";
+  }
+  if (msg.includes("demo")) {
+    return "Sure 👍 Please tell me your business type and goal.";
+  }
+  if (msg.includes("hi") || msg.includes("hello")) {
+    return "Hello 👋 How can I help you today?";
+  }
+  return "Thanks for your message! Our team will get back shortly.";
+}
 
 // =======================
-// ROOT ROUTE (TEST)
+// ROOT TEST
 // =======================
 app.get('/', (req, res) => {
-  res.send('WhatsApp Automation Server is running');
+  res.send('Automation Core is running 🚀');
 });
 
 // =======================
-// WEBHOOK VERIFY (GET)
+// META WEBHOOK VERIFY
 // =======================
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
@@ -30,92 +43,74 @@ app.get('/webhook', (req, res) => {
   const challenge = req.query['hub.challenge'];
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('WEBHOOK VERIFIED');
+    console.log('✅ WEBHOOK VERIFIED');
     res.status(200).send(challenge);
   } else {
-    console.log('WEBHOOK VERIFICATION FAILED');
     res.sendStatus(403);
   }
 });
 
 // =======================
-// WEBHOOK RECEIVE (POST)
+// META WEBHOOK RECEIVE
+// (WhatsApp / Instagram / FB)
 // =======================
 app.post('/webhook', (req, res) => {
-  console.log('INCOMING WEBHOOK DATA:');
-  console.log(JSON.stringify(req.body, null, 2));
-  res.sendStatus(200);
+  try {
+    const entry = req.body.entry?.[0];
+    const change = entry?.changes?.[0];
+    const value = change?.value;
+
+    // WhatsApp
+    if (value?.messages) {
+      const msg = value.messages[0];
+      const reply = generateReply(msg.text?.body);
+      console.log("📩 WhatsApp:", msg.from, msg.text?.body);
+      console.log("🤖 Reply:", reply);
+    }
+
+    // Instagram / Messenger
+    if (value?.messaging) {
+      const event = value.messaging[0];
+      const text = event.message?.text;
+      const reply = generateReply(text);
+      console.log("📩 IG/FB:", text);
+      console.log("🤖 Reply:", reply);
+    }
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.sendStatus(200);
+  }
 });
 
-// ===============================
-// DEMO MODE ROUTES (NO META)
-// ===============================
-
-// GET test (browser open ke liye)
+// =======================
+// DEMO MODE (CLIENT TEST)
+// =======================
 app.get('/demo/incoming', (req, res) => {
   res.json({
-    status: 'Demo endpoint is live',
-    usage: 'Send POST request with message payload'
+    status: "Demo endpoint is live",
+    usage: "POST { from, name, message }"
   });
 });
 
-// POST demo message with AUTOMATION + CRM
 app.post('/demo/incoming', (req, res) => {
   const { from, name, message } = req.body || {};
+  const reply = generateReply(message);
 
-  if (!message) {
-    return res.status(400).json({
-      error: 'Message field is required'
-    });
-  }
-
-  const text = message.toLowerCase();
-  let reply = 'Thanks for contacting Automation Core! How can we help you?';
-  let tag = 'general';
-
-  if (text.includes('price') || text.includes('pricing')) {
-    reply = 'Our plans start from $49/month. Would you like a demo or full details?';
-    tag = 'pricing';
-  } else if (text.includes('demo')) {
-    reply = 'Sure! Please tell us your business type and expected message volume.';
-    tag = 'demo';
-  } else if (text.includes('support')) {
-    reply = 'Our support team is here. Please describe your issue.';
-    tag = 'support';
-  }
-
-  // Save lead (CRM demo)
-  leads.push({
-    from,
-    name,
-    message,
-    tag,
-    at: new Date().toISOString()
-  });
-
-  console.log('📩 DEMO MESSAGE:', { from, name, message, tag });
+  console.log("📩 DEMO:", from, name, message);
+  console.log("🤖 Reply:", reply);
 
   res.json({
-    status: 'processed',
-    tag,
+    status: "processed",
     reply
   });
 });
 
-// ===============================
-// VIEW SAVED LEADS (CRM)
-// ===============================
-app.get('/demo/leads', (req, res) => {
-  res.json({
-    count: leads.length,
-    leads
-  });
-});
-
 // =======================
-// SERVER START
+// START SERVER
 // =======================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server live on port ${PORT}`);
 });
