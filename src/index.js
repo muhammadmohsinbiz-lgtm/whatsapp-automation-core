@@ -49,3 +49,35 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+// ===============================
+// DEMO MODE ROUTES (NO META)
+// ===============================
+
+// GET test (browser open ke liye)
+app.get('/demo/incoming', (req, res) => {
+  res.json({
+    status: 'Demo endpoint is live',
+    usage: 'Send POST request with message payload'
+  });
+});
+
+// POST demo message
+app.post('/demo/incoming', (req, res) => {
+  const { from, name, message } = req.body || {};
+
+  if (!message) {
+    return res.status(400).json({
+      error: 'Message field is required'
+    });
+  }
+
+  // Simulated automation reply
+  const reply = `Thanks ${name || 'there'}! We received: "${message}"`;
+
+  console.log('📩 DEMO MESSAGE:', { from, name, message });
+
+  res.json({
+    status: 'processed',
+    reply
+  });
+});
