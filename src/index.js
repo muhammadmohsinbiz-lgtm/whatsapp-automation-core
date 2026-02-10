@@ -10,6 +10,11 @@ app.use(express.json());
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "my_verify_token";
 
 // =======================
+// IN-MEMORY CRM (DEMO)
+// =======================
+const leads = [];
+
+// =======================
 // ROOT ROUTE (TEST)
 // =======================
 app.get('/', (req, res) => {
@@ -42,13 +47,6 @@ app.post('/webhook', (req, res) => {
   res.sendStatus(200);
 });
 
-// =======================
-// SERVER START
-// =======================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
 // ===============================
 // DEMO MODE ROUTES (NO META)
 // ===============================
@@ -61,7 +59,7 @@ app.get('/demo/incoming', (req, res) => {
   });
 });
 
-// POST demo message
+// POST demo message with AUTOMATION + CRM
 app.post('/demo/incoming', (req, res) => {
   const { from, name, message } = req.body || {};
 
@@ -71,13 +69,53 @@ app.post('/demo/incoming', (req, res) => {
     });
   }
 
-  // Simulated automation reply
-  const reply = `Thanks ${name || 'there'}! We received: "${message}"`;
+  const text = message.toLowerCase();
+  let reply = 'Thanks for contacting Automation Core! How can we help you?';
+  let tag = 'general';
 
-  console.log('📩 DEMO MESSAGE:', { from, name, message });
+  if (text.includes('price') || text.includes('pricing')) {
+    reply = 'Our plans start from $49/month. Would you like a demo or full details?';
+    tag = 'pricing';
+  } else if (text.includes('demo')) {
+    reply = 'Sure! Please tell us your business type and expected message volume.';
+    tag = 'demo';
+  } else if (text.includes('support')) {
+    reply = 'Our support team is here. Please describe your issue.';
+    tag = 'support';
+  }
+
+  // Save lead (CRM demo)
+  leads.push({
+    from,
+    name,
+    message,
+    tag,
+    at: new Date().toISOString()
+  });
+
+  console.log('📩 DEMO MESSAGE:', { from, name, message, tag });
 
   res.json({
     status: 'processed',
+    tag,
     reply
   });
+});
+
+// ===============================
+// VIEW SAVED LEADS (CRM)
+// ===============================
+app.get('/demo/leads', (req, res) => {
+  res.json({
+    count: leads.length,
+    leads
+  });
+});
+
+// =======================
+// SERVER START
+// =======================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
